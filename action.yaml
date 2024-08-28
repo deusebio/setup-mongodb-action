@@ -1,0 +1,88 @@
+# Copyright 2024 Canonical Ltd.
+# See LICENSE file for licensing details.
+
+# Usage documentation: build_charm.md
+---
+name: "Charmed MongoDB Setup"
+description: "Creates a MongoDB deployment for integration testing"
+author: "Canonical"
+
+branding:
+  icon: "alert-circle"
+  color: "purple"
+
+inputs:
+  units:
+    description: Number of MongoDB server
+    default: "1"
+    required: false
+  database:
+    description: Name for the requested database
+    default: "1"
+    required: false
+  user-roles:
+    description: Role for the user to be created
+    default: "admin"
+    required: false
+  model:
+    description: Name of the Juju model where to deploy the cluster
+    default: "kafka"
+    required: false
+
+
+outputs:
+  uris:
+    description: URIs of the MongoDB server
+    value: ${{ steps.outputs.outputs.uris }}
+  username:
+    description: Name of the user created for external use
+    value: ${{ steps.outputs.outputs.username }}
+  password:
+    description: User password
+    value: ${{ steps.outputs.outputs.password }}
+
+runs:
+  using: composite
+  steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        repository: deusebio/setup-mongodb-action
+        path: "mongodb"
+
+    - name: Setup operator environment
+      if:  ${{ env.CONTROLLER_NAME == '' }}
+      uses: charmed-kubernetes/actions-operator@main
+      with:
+        provider: lxd
+        juju-channel: 3.5/stable
+        bootstrap-options: "--agent-version 3.5.3"
+
+    - name: Deploy MongoDB
+      id: deploy
+      working-directory: "mongodb"
+      shell: bash
+      run: |
+        pip install jinja2-cli
+
+        juju add-model ${{ inputs.model }}
+
+        jinja2 \
+          -D units=${{ inputs.units }} \
+          -D user_roles=${{ inputs.user-roles }} \
+          -D database_name=${{ inputs.database }} \
+          ./resources/bundle.yaml.j2 > bundle.yaml
+
+        juju deploy ./bundle.yaml
+        juju wait-for application mongodb --query='name=="mongodb" && (status=="active" || status=="idle")' --timeout 30m0s
+        juju wait-for application user --query='name=="user" && (status=="active" || status=="idle")' --timeout 30m0s
+
+    - name: Fetch output variables
+      id: outputs
+      shell: bash
+      run: |
+        juju run user/leader get-credentials --format plain > outputs.yaml
+        cat outputs.yaml
+        echo "uris=$(yq '.mongodb.uris' outputs.yaml)" >> $GITHUB_OUTPUT
+        echo "username=$(yq '.mongodb.username' outputs.yaml)" >> $GITHUB_OUTPUT
+        echo "password=$(yq '.mongodb.password' outputs.yaml)" >> $GITHUB_OUTPUT

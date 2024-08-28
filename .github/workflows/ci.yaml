@@ -1,0 +1,62 @@
+# Copyright 2022 Canonical Ltd.
+# See LICENSE file for licensing details.
+name: Tests
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+on:
+  pull_request:
+  workflow_call:
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Install yamllint
+        run: python3 -m pip install yamllint
+      - name: YAML Lint
+        run:  |
+          yamllint -d "{extends: relaxed, rules: {line-length: {max: 250}}}" \
+            --no-warnings action.yaml
+
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          path: setup-mongodb-action
+
+      - name: Setup MongoDB
+        id: mongodb
+        uses: ./setup-mongodb-action
+        with:
+          units: 3
+
+      - name: Show Juju status
+        run: |
+          juju status
+
+      - name: Check metadata
+        run: |
+          echo "Endpoint: ${{ steps.mongodb.outputs.uris }}"
+          echo "Username: ${{ steps.mongodb.outputs.username }}"
+          echo "Password: ${{ steps.mongodb.outputs.password }}"
+
+      - name: Setup MongoDB (2)
+        id: mongodb-2
+        uses: ./setup-mongodb-action
+        with:
+          model: "mongodb-2"
+
+      - name: Check metadata (2)
+        run: |
+          echo "Endpoint: ${{ steps.mongodb-2.outputs.uris }}"
+          echo "Username: ${{ steps.mongodb-2.outputs.username }}"
+          echo "Password: ${{ steps.mongodb-2.outputs.password }}"
