@@ -44,12 +44,6 @@ outputs:
 runs:
   using: composite
   steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
-      with:
-        repository: deusebio/setup-mongodb-action
-        path: "mongodb"
-
     - name: Setup operator environment
       if:  ${{ env.CONTROLLER_NAME == '' }}
       uses: charmed-kubernetes/actions-operator@main
@@ -60,12 +54,13 @@ runs:
 
     - name: Deploy MongoDB
       id: deploy
-      working-directory: "mongodb"
       shell: bash
       run: |
         pip install jinja2-cli
 
         juju add-model ${{ inputs.model }}
+
+        cd ${{ github.action_path }}
 
         jinja2 \
           -D units=${{ inputs.units }} \
