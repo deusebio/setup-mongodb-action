@@ -18,7 +18,7 @@ inputs:
     required: false
   database:
     description: Name for the requested database
-    default: "1"
+    default: "test-database"
     required: false
   user-roles:
     description: Role for the user to be created
@@ -26,7 +26,7 @@ inputs:
     required: false
   model:
     description: Name of the Juju model where to deploy the cluster
-    default: "kafka"
+    default: "mongodb"
     required: false
 
 
