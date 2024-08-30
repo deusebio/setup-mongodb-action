@@ -1,0 +1,25 @@
+applications:
+  mongodb:
+    channel: 6/stable
+    charm: mongodb
+    num_units: {{ units }}
+    revision: 164
+    series: jammy
+  user:
+    channel: latest/stable
+    charm: data-integrator
+    num_units: 1
+    revision: 41
+    series: jammy
+    options:
+      extra-user-roles: {{ user_roles }}
+      database-name: {{ database_name }}
+
+description: A fast, secure and fault-tolerant MongoDB
+issues: https://github.com/canonical/mongodb-operator/issues/new
+name: mongodb-bundle
+relations:
+- - user:mongodb
+  - mongodb:database
+series: jammy
+source: https://github.com/canonical/mongodb-operator
